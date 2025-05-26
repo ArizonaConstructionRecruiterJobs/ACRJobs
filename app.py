@@ -66,8 +66,7 @@ if st.button("Search Jobs"):
             prompt = (
                 "You are an AI assistant helping a recruiter. Determine if the following job post "
                 "suggests the company is open to working with external recruiters. "
-                "Keep the response to one or two sentences.
-"
+                "Keep the response to one or two sentences.\n"
                 f"<<<{description_text}>>>"
             )
 
@@ -91,8 +90,7 @@ if st.button("Search Jobs"):
 
         if results:
             st.markdown("**Results:**")
-            header = "| Company | Job Title | Posting Link | AI Analysis |
-|---|---|---|---|"
+            header = "| Company | Job Title | Posting Link | AI Analysis |\n|---|---|---|---|"
             rows = [
                 f"| {res['Company']} | {res['Job Title']} | {res['Link']} | {res['AI Analysis']} |"
                 for res in results
