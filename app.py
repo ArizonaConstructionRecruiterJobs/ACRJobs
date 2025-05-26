@@ -7,14 +7,15 @@ import math
 st.title("AI-Powered US Job Search for Recruiters")
 
 st.markdown(
-    "Search real-time US job postings by title. This tool filters out recruiter-hostile posts "
-    "and excludes staffing/recruiting agencies using GPT and fallback keyword checks. "
-    "Then, it uses GPT to assess if the company might welcome recruiter help."
+    "Search real-time US job postings by title. This tool filters out recruiter-hostile posts, "
+    "excludes staffing/recruiting agencies using GPT and fallback keyword checks, and analyzes fit for recruiter outreach."
 )
 
 # User inputs
 job_query = st.text_input("Job Title Keyword (e.g., Project Manager):", value="")
-max_results = st.number_input("Max number of jobs to analyze (up to 100)", min_value=1, max_value=100, value=25, step=5)
+max_results = st.number_input("Max number of jobs to analyze (up to 100)", min_value=10, max_value=100, value=30, step=10)
+page_size = st.number_input("Jobs per page", min_value=5, max_value=25, value=10, step=5)
+page_number = st.number_input("Page number to view", min_value=1, value=1, step=1)
 
 st.subheader("🔐 API Keys (kept private)")
 adzuna_app_id = st.text_input("Adzuna App ID", type="password")
@@ -62,13 +63,11 @@ if st.button("Search Jobs"):
         url = job.get("redirect_url", "#")
         text = f"{title} {desc}".lower()
 
-        # Filter out recruiter-hostile job text
         if any(term in text for term in ["no recruiters", "no agencies", "no recruitment agencies"]):
             continue
         if not any(word in title.lower() for word in keyword_words):
             continue
 
-        # GPT-based agency check with strict prompt
         agency_check_prompt = (
             f"You are a business classifier. Only respond with 'Yes' or 'No'. "
             f"Is the company '{company}' a staffing or recruiting agency?"
@@ -84,17 +83,13 @@ if st.button("Search Jobs"):
         except Exception as e:
             agency_answer = "error"
 
-        # GPT said yes → exclude
+        fallback_terms = ["staffing", "recruiting", "recruitment", "talent", "consulting", "agency"]
         if agency_answer == "yes":
             continue
-
-        # Fallback: if unclear or error, check keywords
-        fallback_terms = ["staffing", "recruiting", "recruitment", "talent", "consulting", "agency"]
         if agency_answer not in ["yes", "no"] or agency_answer == "error":
             if any(term in company.lower() for term in fallback_terms):
                 continue
 
-        # Passed all checks
         filtered_jobs.append({
             "title": title,
             "company": company,
@@ -134,14 +129,21 @@ if st.button("Search Jobs"):
             "AI Analysis": analysis
         })
 
-    if results:
-        st.markdown("### Results")
+    # Paginate the display
+    start = (page_number - 1) * page_size
+    end = start + page_size
+    paged_results = results[start:end]
+
+    if paged_results:
+        st.markdown(f"### Showing results {start+1}–{min(end, len(results))} of {len(results)}")
         header = "| Company | Job Title | Posting Link | AI Analysis |\n|---|---|---|---|"
         rows = [
             f"| {res['Company']} | {res['Job Title']} | {res['Link']} | {res['AI Analysis']} |"
-            for res in results
+            for res in paged_results
         ]
         table_md = header + "\n" + "\n".join(rows)
         st.markdown(table_md, unsafe_allow_html=True)
 
         st.caption("Data source: Adzuna US API (adzuna.com)")
+    else:
+        st.warning("No results to display on this page.")
