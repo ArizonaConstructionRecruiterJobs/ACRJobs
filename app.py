@@ -8,7 +8,8 @@ st.title("AI-Powered US Job Search for Recruiters")
 
 st.markdown(
     "Search all available US job postings by title. "
-    "This app filters out posts that mention 'no recruiters' or 'no agencies' and uses GPT to assess recruiter fit."
+    "This app filters out recruiter-hostile posts and job listings from staffing/recruiting agencies. "
+    "It uses GPT to assess how open the company may be to external recruiters."
 )
 
 # User inputs
@@ -52,6 +53,13 @@ if st.button("Search Jobs"):
 
     keyword_words = job_query.lower().split()
     filtered_jobs = []
+
+    # Heuristic terms used to detect recruiting/staffing agencies
+    agency_terms = [
+        "recruiting", "recruitment", "staffing", "talent", "personnel",
+        "placement", "consulting", "agency", "solutions", "headhunter", "search firm"
+    ]
+
     for job in all_jobs:
         title = job.get("title", "")
         company = job.get("company", {}).get("display_name", "N/A")
@@ -59,10 +67,13 @@ if st.button("Search Jobs"):
         url = job.get("redirect_url", "#")
         text = f"{title} {desc}".lower()
 
-        if any(word in text for word in ["no recruiters", "no agencies", "no recruitment agencies"]):
+        # Filter out agency-style job descriptions or company names
+        if any(term in text for term in ["no recruiters", "no agencies", "no recruitment agencies"]):
             continue
         if not any(word in title.lower() for word in keyword_words):
             continue
+        if any(term in company.lower() for term in agency_terms):
+            continue  # exclude recruiting/staffing agencies
 
         filtered_jobs.append({
             "title": title,
