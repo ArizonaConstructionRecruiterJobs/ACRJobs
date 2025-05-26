@@ -54,7 +54,8 @@ if st.button("Search Jobs"):
         if not openai_api_key:
             st.error("OpenAI API key required.")
             st.stop()
-        openai.api_key = openai_api_key
+
+        client = openai.OpenAI(api_key=openai_api_key)
 
         results = []
         for job in filtered_jobs:
@@ -71,13 +72,13 @@ if st.button("Search Jobs"):
             )
 
             try:
-                response = openai.ChatCompletion.create(
+                response = client.chat.completions.create(
                     model="gpt-3.5-turbo",
                     messages=[{"role": "user", "content": prompt}],
                     max_tokens=100,
                     temperature=0
                 )
-                analysis = response["choices"][0]["message"]["content"].strip()
+                analysis = response.choices[0].message.content.strip()
             except Exception as e:
                 analysis = f"AI error: {e}"
 
