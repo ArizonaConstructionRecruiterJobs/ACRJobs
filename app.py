@@ -12,7 +12,7 @@ st.markdown(
 )
 
 job_query = st.text_input("Job Title Keyword (e.g., Software Engineer):", value="")
-max_results = st.number_input("Max number of postings to analyze", min_value=1, max_value=20, value=5, step=1)
+max_results = st.number_input("Max number of postings to analyze", min_value=1, max_value=50, value=10, step=1)
 
 if "api_key" not in st.session_state:
     openai_api_key = st.text_input("OpenAI API Key (starts with 'sk-'):", type="password")
@@ -26,7 +26,7 @@ if st.button("Search Jobs"):
         st.error("Please enter search keywords.")
     else:
         api_url = "https://remotive.com/api/remote-jobs"
-        params = {"search": job_query, "limit": max_results * 4}
+        params = {"search": job_query, "limit": 100}  # Fetch more results for better filtering
         try:
             response = requests.get(api_url, params=params)
             data = response.json()
@@ -36,7 +36,7 @@ if st.button("Search Jobs"):
 
         jobs = data.get("jobs", [])
         filtered_jobs = []
-        keyword_lower = job_query.lower()
+        keyword_words = job_query.lower().split()
         for job in jobs:
             title = job.get("title", "")
             company = job.get("company_name", "")
@@ -47,8 +47,8 @@ if st.button("Search Jobs"):
             if ("no recruiters" in text) or ("no recruitment agency" in text) or ("no agencies" in text):
                 continue
 
-            # Keep only jobs where the job title includes the keyword
-            if keyword_lower not in title.lower():
+            # Smart filter: check if any keyword word appears in the title
+            if not any(word in title.lower() for word in keyword_words):
                 continue
 
             filtered_jobs.append(job)
