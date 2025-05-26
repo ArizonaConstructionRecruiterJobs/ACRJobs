@@ -7,8 +7,9 @@ import math
 st.title("AI-Powered US Job Search for Recruiters")
 
 st.markdown(
-    "This app searches all available US job postings by title, filters out recruiter-hostile posts, "
-    "and uses GPT to assess whether a company is a staffing/recruiting agency and whether they might welcome recruiter help."
+    "Search real-time US job postings by title. This tool filters out recruiter-hostile posts "
+    "and excludes staffing/recruiting agencies using GPT and fallback keyword checks. "
+    "Then, it uses GPT to assess if the company might welcome recruiter help."
 )
 
 # User inputs
@@ -61,33 +62,39 @@ if st.button("Search Jobs"):
         url = job.get("redirect_url", "#")
         text = f"{title} {desc}".lower()
 
-        # Filter out posts explicitly rejecting recruiters
+        # Filter out recruiter-hostile job text
         if any(term in text for term in ["no recruiters", "no agencies", "no recruitment agencies"]):
             continue
         if not any(word in title.lower() for word in keyword_words):
             continue
 
-        # Use GPT to determine if the company is likely a staffing/recruiting agency
+        # GPT-based agency check with strict prompt
         agency_check_prompt = (
-            f"Is '{company}' a staffing or recruiting agency? "
-            "Answer 'Yes' or 'No'. Do not explain."
+            f"You are a business classifier. Only respond with 'Yes' or 'No'. "
+            f"Is the company '{company}' a staffing or recruiting agency?"
         )
         try:
-            agency_check_response = openai_client.chat.completions.create(
+            agency_response = openai_client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[{"role": "user", "content": agency_check_prompt}],
                 max_tokens=5,
                 temperature=0
             )
-            agency_answer = agency_check_response.choices[0].message.content.strip().lower()
+            agency_answer = agency_response.choices[0].message.content.strip().lower()
         except Exception as e:
             agency_answer = "error"
+
+        # GPT said yes → exclude
+        if agency_answer == "yes":
             continue
 
-        if "yes" in agency_answer:
-            continue  # exclude agency listings
+        # Fallback: if unclear or error, check keywords
+        fallback_terms = ["staffing", "recruiting", "recruitment", "talent", "consulting", "agency"]
+        if agency_answer not in ["yes", "no"] or agency_answer == "error":
+            if any(term in company.lower() for term in fallback_terms):
+                continue
 
-        # If passed, keep for recruiter-fit GPT evaluation
+        # Passed all checks
         filtered_jobs.append({
             "title": title,
             "company": company,
@@ -98,7 +105,7 @@ if st.button("Search Jobs"):
             break
 
     if not filtered_jobs:
-        st.warning("No suitable jobs found after AI agency check.")
+        st.warning("No suitable jobs found after filtering.")
         st.stop()
 
     results = []
